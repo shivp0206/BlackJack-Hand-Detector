@@ -1,0 +1,1 @@
+The CNN model file was too big to upload to github so you'll have to download it from https://drive.google.com/drive/u/2/folders/18ujwf45XgzFV6MmKzjS9Rr0dA49AhlSe where the name of the file is 'playingCards.pt'
