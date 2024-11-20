@@ -1,0 +1,117 @@
+from ultralytics import YOLO
+import cv2
+import cvzone
+import math
+
+# Initialize the webcam for capturing real-time video feed.
+cap = cv2.VideoCapture(0)  # Open the webcam (index 0 refers to the default webcam).
+cap.set(3, 1280)  # Set the width to 1280 pixels.
+cap.set(4, 720)  # Set the height to 720 pixels.
+
+
+model = YOLO("playingCards.pt")
+
+# List of card class names corresponding to the model's output.
+classNames = ['10C', '10D', '10H', '10S',
+              '2C', '2D', '2H', '2S',
+              '3C', '3D', '3H', '3S',
+              '4C', '4D', '4H', '4S',
+              '5C', '5D', '5H', '5S',
+              '6C', '6D', '6H', '6S',
+              '7C', '7D', '7H', '7S',
+              '8C', '8D', '8H', '8S',
+              '9C', '9D', '9H', '9S',
+              'AC', 'AD', 'AH', 'AS',
+              'JC', 'JD', 'JH', 'JS',
+              'KC', 'KD', 'KH', 'KS',
+              'QC', 'QD', 'QH', 'QS']
+
+# Function to calculate the value of a Blackjack hand.
+def calculate_blackjack_value(hand):
+    value = 0
+    aces = 0
+
+    for card in hand:
+        rank = card[:-1]
+        if rank in ['K', 'Q', 'J']:
+            value += 10
+        elif rank == 'A':
+            aces += 1
+            value += 11
+        else:
+            value += int(rank)
+
+    while value > 21 and aces > 0:
+        value -= 10
+        aces -= 1
+
+    return value
+
+# Main loop to process each frame of the video feed.
+while True:
+    success, img = cap.read()
+    results = model(img, stream=True)
+    dealer_hand = []  
+    player_hand = [] 
+
+    # Define the zones: dealer (top half) and player (bottom half).
+    height, width, _ = img.shape
+    dealer_zone = (0, 0, width, height // 2)  # Top half.
+    player_zone = (0, height // 2, width, height)  # Bottom half.
+
+    # Draw a line to separate the dealer and player zones.
+    separator_y = height // 2
+    cv2.line(img, (0, separator_y), (width, separator_y), (0, 255, 255), 3)
+
+    for r in results:
+        boxes = r.boxes
+        for box in boxes:
+            x1, y1, x2, y2 = box.xyxy[0]
+            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+            w, h = x2 - x1, y2 - y1
+
+            cvzone.cornerRect(img, (x1, y1, w, h))
+
+            conf = math.ceil((box.conf[0] * 100)) / 100
+            cls = int(box.cls[0])
+
+            if conf > 0.5:
+                card = classNames[cls]
+                # Assign cards based on the zone they appear in.
+                if y1 < dealer_zone[3]:  # If the card is in the dealer's zone.
+                    dealer_hand.append(card)
+                elif y1 >= player_zone[1]:  # If the card is in the player's zone.
+                    player_hand.append(card)
+
+    # Remove duplicates from both hands.
+    dealer_hand = list(set(dealer_hand))
+    player_hand = list(set(player_hand))
+
+    # Calculate and display dealer's hand value.
+    if dealer_hand:
+        dealer_value = calculate_blackjack_value(dealer_hand)
+        if dealer_value == 21:
+            dealer_result = "BLACKJACK!!!"
+        elif dealer_value > 21:
+            dealer_result = "BUST! YOU LOSE!"
+        else:
+            dealer_result = f"Dealer: {dealer_value}"
+        cvzone.putTextRect(img, dealer_result, (50, 50), scale=2, thickness=2, colorR=(255, 255, 0))
+
+    # Calculate and display player's hand value.
+    if player_hand:
+        player_value = calculate_blackjack_value(player_hand)
+        if player_value == 21:
+            player_result = "BLACKJACK!!!"
+        elif player_value > 21:
+            player_result = "BUST! YOU LOSE!"
+        else:
+            player_result = f"Player: {player_value}"
+        cvzone.putTextRect(img, player_result, (50, separator_y + 50), scale=2, thickness=2, colorR=(0, 255, 0))
+
+    # Show the processed video frame with annotations in a window.
+    cv2.imshow("Image", img)
+
+    # Wait for 1 millisecond and check for user input to break the loop.
+    if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to exit.
+        break
