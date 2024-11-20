@@ -4,11 +4,11 @@ import cvzone
 import math
 
 # Initialize the webcam for capturing real-time video feed.
-cap = cv2.VideoCapture(0)  # Open the webcam (index 0 refers to the default webcam).
-cap.set(3, 1280)  # Set the width to 1280 pixels.
-cap.set(4, 720)  # Set the height to 720 pixels.
+cap = cv2.VideoCapture(0)  # Open the webcam (index 0 typically refers to the default webcam).
+cap.set(3, 1280)  # Set the width of the video frame to 1280 pixels.
+cap.set(4, 720)  # Set the height of the video frame to 720 pixels.
 
-
+# Load the best YOLO model for detecting playing cards.
 model = YOLO("playingCards.pt")
 
 # List of card class names corresponding to the model's output.
@@ -51,8 +51,8 @@ def calculate_blackjack_value(hand):
 while True:
     success, img = cap.read()
     results = model(img, stream=True)
-    dealer_hand = []  
-    player_hand = [] 
+    dealer_hand = []  # Cards detected in the dealer's zone.
+    player_hand = []  # Cards detected in the player's zone.
 
     # Define the zones: dealer (top half) and player (bottom half).
     height, width, _ = img.shape
@@ -91,9 +91,9 @@ while True:
     if dealer_hand:
         dealer_value = calculate_blackjack_value(dealer_hand)
         if dealer_value == 21:
-            dealer_result = "BLACKJACK!!!"
+            dealer_result = "21! DEALER WINS!!!"
         elif dealer_value > 21:
-            dealer_result = "BUST! YOU LOSE!"
+            dealer_result = "BUST! DEALER LOSES :("
         else:
             dealer_result = f"Dealer: {dealer_value}"
         cvzone.putTextRect(img, dealer_result, (50, 50), scale=2, thickness=2, colorR=(255, 255, 0))
@@ -102,9 +102,9 @@ while True:
     if player_hand:
         player_value = calculate_blackjack_value(player_hand)
         if player_value == 21:
-            player_result = "BLACKJACK!!!"
+            player_result = "21! PLAYER WINS!!!"
         elif player_value > 21:
-            player_result = "BUST! YOU LOSE!"
+            player_result = "BUST! PLAYER LOSES :("
         else:
             player_result = f"Player: {player_value}"
         cvzone.putTextRect(img, player_result, (50, separator_y + 50), scale=2, thickness=2, colorR=(0, 255, 0))
@@ -115,3 +115,4 @@ while True:
     # Wait for 1 millisecond and check for user input to break the loop.
     if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to exit.
         break
+
